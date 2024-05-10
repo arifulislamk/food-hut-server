@@ -45,6 +45,13 @@ async function run() {
             const result = await allFoodsCollection.findOne(query);
             res.send(result)
         })
+        
+        app.get('/allFood/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { donatorEmail : email };
+            const result = await allFoodsCollection.find(query).toArray();
+            res.send(result)
+        })
 
         // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
