@@ -28,6 +28,7 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         // await client.connect();
         const allFoodsCollection = client.db("foodDB").collection("foods");
+        const myRequestedFoodsCollection = client.db("requestDB").collection("request");
 
         // allFoodsCollection api 
         app.post('/allFoods', async (req, res) => {
@@ -36,19 +37,19 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/all-foods', async(req, res)=> {
-            const search = req.query.search ; 
-            console.log(req.query.sort) ;
-            const sort = req.query.sort ;
-            const query = { 
-                foodName : { $regex : search, $options: 'i'},
-             }
-             let options = {} ;
-             if (sort) options = { sort: { expiredDate: sort === 'asc' ? 1 : -1 } }
-             const result = await allFoodsCollection.find(query , options).toArray()
-             res.send(result)
+        app.get('/all-foods', async (req, res) => {
+            const search = req.query.search;
+            console.log(req.query.sort);
+            const sort = req.query.sort;
+            const query = {
+                foodName: { $regex: search, $options: 'i' },
+            }
+            let options = {};
+            if (sort) options = { sort: { expiredDate: sort === 'asc' ? 1 : -1 } }
+            const result = await allFoodsCollection.find(query, options).toArray()
+            res.send(result)
         })
-        
+
         app.get('/allFoods', async (req, res) => {
             const result = await allFoodsCollection.find().toArray();
             res.send(result)
@@ -72,18 +73,25 @@ async function run() {
             const result = await allFoodsCollection.deleteOne(query);
             res.send(result)
         })
-        app.put('/allFoodsupdate/:id', async (req, res)=> {
-            const id = req.params.id ;
-            const updatedFoods = req.body ;
-            const query = { _id : new ObjectId(id)} ;
-            const options = { upsert : true} ;
+        app.put('/allFoodsupdate/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedFoods = req.body;
+            const query = { _id: new ObjectId(id) };
+            const options = { upsert: true };
 
             const updateDoc = {
-                $set : {
+                $set: {
                     ...updatedFoods
                 }
             }
-            const result = await allFoodsCollection.updateOne(query, updateDoc,options) ;
+            const result = await allFoodsCollection.updateOne(query, updateDoc, options);
+            res.send(result)
+        })
+
+        // myRequestedFoodsCollection api 
+        app.post('/requestFoods', async (req, res) => {
+            const food = req.body;
+            const result = await myRequestedFoodsCollection.insertOne(food);
             res.send(result)
         })
 
