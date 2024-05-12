@@ -1,15 +1,21 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
 
 
-console.log(process.env.Secret, 'from sectet')
+console.log(process.env.Sec, 'from sectet')
 // middlewars
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173'],
+    credentials: true
+}));
 app.use(express.json())
+app.use(cookieParser())
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.zwicj3r.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -23,6 +29,30 @@ const client = new MongoClient(uri, {
     }
 });
 
+
+const verifyToken = async (req, res, next) => {
+    const token = req.cookies?.token;
+    console.log('value of token in middele ware', token)
+    if (!token) {
+        return res.status(401).send({ messeage: 'unauthorized access' })
+    }
+    jwt.verify(token, process.env.SECRET, (err, decoded) => {
+        //errror
+        if (err) {
+            console.log(err)
+            return res.status(401).send({ messeage: 'unauthorized' })
+        }
+        //if token is vaild then it will be decoded
+        console.log('value in the decoded', decoded)
+        req.user = decoded;
+        next()
+    })
+}
+const cookieOptions = {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    secure: process.env.NODE_ENV === "production" ? true : false,
+};
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -30,9 +60,25 @@ async function run() {
         const allFoodsCollection = client.db("foodDB").collection("foods");
         const myRequestedFoodsCollection = client.db("requestDB").collection("request");
 
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            console.log(user)
+            const token = jwt.sign(user, process.env.SECRET, { expiresIn: '1h' })
+            res
+                .cookie('token', token, cookieOptions)
+                .send({ success: true })
+        })
+        app.post('/logout', async (req, res) => {
+            const user = req.body;
+            console.log(user)
+            res
+                .clearCookie('token', { ...cookieOptions, maxAge: 0 })
+                .send({ success: true })
+        })
         // allFoodsCollection api 
         app.post('/allFoods', async (req, res) => {
             const food = req.body;
+            console.log(food)
             const result = await allFoodsCollection.insertOne(food);
             res.send(result)
         })
@@ -42,6 +88,7 @@ async function run() {
             console.log(req.query.sort);
             const sort = req.query.sort;
             const query = {
+                foodStatus: 'available',
                 foodName: { $regex: search, $options: 'i' },
             }
             let options = {};
@@ -51,7 +98,7 @@ async function run() {
         })
 
         app.get('/allFoods', async (req, res) => {
-            const result = await allFoodsCollection.find().toArray();
+            const result = await allFoodsCollection.find().sort({ foodQuantity: -1 }).limit(6).toArray();
             res.send(result)
         })
         app.get('/allFoods/:id', async (req, res) => {
@@ -61,7 +108,11 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/allFood/:email', async (req, res) => {
+        app.get('/allFood/:email', verifyToken, async (req, res) => {
+            console.log(req.user, 'value from varify token');
+            if (req.user.email !== req.params.email) {
+                return res.status(403).send({ messeage: 'forbidden access' })
+            }
             const email = req.params.email;
             const query = { donatorEmail: email };
             const result = await allFoodsCollection.find(query).toArray();
@@ -92,6 +143,13 @@ async function run() {
         app.post('/requestFoods', async (req, res) => {
             const food = req.body;
             const result = await myRequestedFoodsCollection.insertOne(food);
+            res.send(result)
+        })
+
+        app.get('/requestFoods/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { requestEmail: email }
+            const result = await myRequestedFoodsCollection.find(query).toArray();
             res.send(result)
         })
 
