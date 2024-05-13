@@ -11,7 +11,9 @@ const port = process.env.PORT || 5000;
 console.log(process.env.Sec, 'from sectet')
 // middlewars
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173',
+     'https://food-hut-28b3b.web.app',
+    'https://food-hut-28b3b.firebaseapp.com'],
     credentials: true
 }));
 app.use(express.json())
@@ -53,6 +55,7 @@ const cookieOptions = {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     secure: process.env.NODE_ENV === "production" ? true : false,
 };
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -146,8 +149,11 @@ async function run() {
             res.send(result)
         })
 
-        app.get('/requestFoods/:email', async (req, res) => {
+        app.get('/requestFoods/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
+            if (req.user.email !== req.params.email) {
+                return res.status(403).send({ messeage: 'forbidden access' })
+            }
             const query = { requestEmail: email }
             const result = await myRequestedFoodsCollection.find(query).toArray();
             res.send(result)
