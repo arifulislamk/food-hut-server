@@ -12,8 +12,8 @@ console.log(process.env.Sec, 'from sectet')
 // middlewars
 app.use(cors({
     origin: ['http://localhost:5173',
-     'https://food-hut-28b3b.web.app',
-    'https://food-hut-28b3b.firebaseapp.com'],
+        'https://food-hut-service.netlify.app',
+     'https://food-hut-28b3b.web.app',],
     credentials: true
 }));
 app.use(express.json())
@@ -87,11 +87,13 @@ async function run() {
         })
 
         app.get('/all-foods', async (req, res) => {
-            const search = req.query.search;
-            console.log(req.query.sort);
-            const sort = req.query.sort;
+            const search = req.query.search || '';
+            console.log(req.query.sort );
+            const sort = req.query.sort || '';
+
+            console.log(search, sort)
             const query = {
-                foodStatus: 'available',
+                // foodStatus: 'available', this line problem
                 foodName: { $regex: search, $options: 'i' },
             }
             let options = {};
